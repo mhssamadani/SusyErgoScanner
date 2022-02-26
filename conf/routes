@@ -1,0 +1,6 @@
+GET        /                                        controllers.Controller.index
+
+GET        /scanner/boxesData/:offset/:limit        controllers.Controller.getBoxesData(offset: Int, limit: Int)
+
+GET        /assets/*file                            controllers.Assets.versioned(path="/public", file: Asset)
+
