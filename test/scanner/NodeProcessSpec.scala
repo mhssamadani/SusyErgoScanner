@@ -24,7 +24,6 @@ import scala.language.postfixOps
 class NodeProcessSpec extends TestSuite {
   private val logger: Logger = Logger(this.getClass)
 
-  // Defining stealth class parameters
   val networkUtils = new MockedNetworkUtils
 
   val mockedDBConfigProvider: DatabaseConfigProvider = mock[DatabaseConfigProvider]

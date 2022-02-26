@@ -99,7 +99,8 @@ class NodeProcess @Inject()(networkUtils: NetworkUtils, outputDao: OutputDAO, da
           }
         }
       )
-      VAADataList += VAAData(amount, fee, Base16.encode(chainId), Base16.encode(receiverAddress), box.additionalTokens(1)._1.toString)
+      VAADataList += VAAData(amount, fee, Base16.encode(chainId), Base16.encode(receiverAddress),
+        box.additionalTokens(1)._1.toString, outputDao.getBoxTimestampByBoxId(Base16.encode(box.id)), Base16.encode(box.id))
     }
     VAADataList
   }

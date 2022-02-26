@@ -138,5 +138,13 @@ class OutputDAO @Inject()(protected val dbConfigProvider: DatabaseConfigProvider
     daoUtils.execAwait(query.result).map(ErgoBoxSerializer.parseBytes)
   }
 
+  /**
+   * @param boxId box id
+   * @return Output timestamp for given box id.
+   */
+  def getBoxTimestampByBoxId(boxId: String): Long = {
+    daoUtils.awaitResult(db.run(outputs.filter(_.boxId === boxId).result.headOption)).get.timestamp
+  }
+
 }
 

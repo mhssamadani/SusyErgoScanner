@@ -50,4 +50,4 @@ object ExtractedOutput {
 
 case class ExtractedOutputResultModel(createdOutputs: Seq[ExtractedOutputModel])
 
-case class VAAData(amount: Long, fee: Long, chainId: String, receiverAddress: String, tokenId:String)
+case class VAAData(amount: Long, fee: Long, chainId: String, receiverAddress: String, tokenId: String, timestamp: Long, boxId: String)

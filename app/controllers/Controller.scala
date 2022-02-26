@@ -29,7 +29,22 @@ class Controller @Inject()(nodeProcess: NodeProcess, outputDAO: OutputDAO, cc: C
   }
 
   /**
-   * List boxes which are unSpent for spec scanId. Route: /scan/unspentBoxes/{scanId}
+   * getting vaaData from bank output boxes
+   *
+   * @param offsetHeight - start height of search
+   * @param limitHeight - limit height of search
+   *
+   * @return
+   * "boxesData": [
+   *  {
+   *    "amount": 100L,
+   *    "fee": 10L,
+   *    "chainId": "",
+   *    "receiverAddress": "",
+   *    tokenId: "",
+   *    timestamp: 1645872775
+   *  }
+   * ]
    */
   def getBoxesData(offsetHeight: Int, limitHeight: Int): Action[AnyContent] = Action { implicit request =>
     try {
@@ -42,6 +57,8 @@ class Controller @Inject()(nodeProcess: NodeProcess, outputDAO: OutputDAO, cc: C
           "chainId" -> vaaData.chainId.asJson,
           "receiverAddress" -> vaaData.receiverAddress.asJson,
           "tokenId" -> vaaData.tokenId.asJson,
+          "timestamp" -> vaaData.timestamp.asJson,
+          "boxId" -> vaaData.boxId.asJson,
         ).asJson
       })
       result = Json.obj("boxesData" -> VAADataList.asJson)
