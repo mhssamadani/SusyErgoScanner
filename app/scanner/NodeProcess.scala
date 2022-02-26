@@ -2,7 +2,6 @@ package scanner
 
 import dao._
 import special.collection.Coll
-
 import helpers.Utils.addressEncoder
 import io.circe.Decoder
 import io.circe.parser.parse
@@ -17,11 +16,12 @@ import org.ergoplatform.modifiers.history.Header
 import scorex.util.encode.Base16
 import settings.Configuration
 
+import javax.inject.Inject
 import scala.collection.mutable
 import scala.util.{Failure, Success}
 
 
-class NodeProcess(networkUtils: NetworkUtils, outputDao: OutputDAO, daoUtils: DAOUtils) {
+class NodeProcess @Inject()(networkUtils: NetworkUtils, outputDao: OutputDAO, daoUtils: DAOUtils) {
 
   val serverUrl: String = Configuration.serviceConf.serverUrl
 

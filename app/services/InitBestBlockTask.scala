@@ -12,7 +12,7 @@ import scanner.NodeProcess
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, ExecutionContext, Future}
 
-class InitBestBlockTask @Inject()(extractedBlockDAO: ExtractedBlockDAO) (implicit executionContext: ExecutionContext) {
+class InitBestBlockTask @Inject()(extractedBlockDAO: ExtractedBlockDAO, nodeProcess: NodeProcess) (implicit executionContext: ExecutionContext) {
 
   private val logger: Logger = Logger(this.getClass)
 
@@ -20,7 +20,7 @@ class InitBestBlockTask @Inject()(extractedBlockDAO: ExtractedBlockDAO) (implici
   * Add best block into db if don't exist data in table
    */
   def store_block(): Unit = {
-    val header: Header = NodeProcess.mainChainHeaderWithHeaderId(Configuration.serviceConf.bestBlockId).get
+    val header: Header = nodeProcess.mainChainHeaderWithHeaderId(Configuration.serviceConf.bestBlockId).get
     val queryResult = extractedBlockDAO.count().flatMap { count =>
       logger.info("Initializing data")
       if (count == 0) {

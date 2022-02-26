@@ -61,12 +61,11 @@ class NodeProcessSpec extends TestSuite {
           case (input, _) =>
             val inputBox: InputBox = ctx.newTxBuilder().outBoxBuilder()
               .value(1000L)
-              .tokens(new ErgoToken("Token_1", 1),
-                new ErgoToken("Token_2", 10L))
+              .tokens(new ErgoToken("6eb9719309e89902978749f1f1219e4a1e381c628f763a862d92176a17a8db19", 1),
+                new ErgoToken("f9bb38db0a8aad038695d5c04672c1232a5689579408af5509f31e285516a1e2", 10L))
               .contract(new ErgoTreeContract(Address.create(Configuration.serviceConf.bankScriptAddress).getErgoAddress.script))
               .build().convertToInputWith(Base16.encode(input.boxId), 1)
 
-              ctx.getBoxesById(Base16.encode(input.boxId)).head
             if (nodeProcessObj.checkBank(inputBox)) {
               inputTokens = inputBox.getTokens.get(1).getValue
             }
@@ -92,7 +91,7 @@ class NodeProcessSpec extends TestSuite {
    * networkUtils
    * OutPutDAO
    */
-  property("getVAAsData stealth address") {
+  property("getVAAsData") {
     // reading header data
     val header = readingHeaderData()
     // reading ergo full block data
