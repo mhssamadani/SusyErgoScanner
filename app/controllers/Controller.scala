@@ -5,7 +5,8 @@ import dao._
 import helpers.ErrorHandler.errorResponse
 import io.circe.syntax.EncoderOps
 import io.circe.{Encoder, Json}
-import models.VAAData
+import models.Observation
+import network.NetworkUtils
 
 import javax.inject._
 import play.api.Logger
@@ -16,7 +17,7 @@ import scala.concurrent.ExecutionContext
 
 
 @Singleton
-class Controller @Inject()(nodeProcess: NodeProcess, outputDAO: OutputDAO, cc: ControllerComponents, actorSystem: ActorSystem)(implicit exec: ExecutionContext) extends AbstractController(cc) {
+class Controller @Inject()(nodeProcess: NodeProcess, networkUtils: NetworkUtils, cc: ControllerComponents, actorSystem: ActorSystem)(implicit exec: ExecutionContext) extends AbstractController(cc) {
 
   private val logger: Logger = Logger(this.getClass)
 
@@ -28,6 +29,22 @@ class Controller @Inject()(nodeProcess: NodeProcess, outputDAO: OutputDAO, cc: C
     Ok("ok")
   }
 
+  /**
+   * @return current height of the blockchain
+   */
+  def height: Action[AnyContent] = Action { implicit request: Request[AnyContent] =>
+    try {
+      var result: Json = Json.Null
+      result = Json.fromFields(List(
+        ("success", Json.fromBoolean(true)),
+        ("height", Json.fromLong(networkUtils.getHeight))
+      ))
+      Ok(result.asJson.toString()).as("application/json")
+
+    } catch {
+      case e: Exception => errorResponse(e)
+    }
+  }
   /**
    * getting vaaData from bank output boxes
    *
@@ -46,22 +63,23 @@ class Controller @Inject()(nodeProcess: NodeProcess, outputDAO: OutputDAO, cc: C
    *  }
    * ]
    */
-  def getBoxesData(offsetHeight: Int, limitHeight: Int): Action[AnyContent] = Action { implicit request =>
+  def getObservations(offsetHeight: Int, limitHeight: Int): Action[AnyContent] = Action { implicit request =>
     try {
       var result: Json = Json.Null
       val VAADataList = nodeProcess.getVAAsData(offsetHeight, limitHeight)
-      implicit val VAADataEncoder: Encoder[VAAData] = Encoder.instance({ vaaData: VAAData =>
+      implicit val VAADataEncoder: Encoder[Observation] = Encoder.instance({ observe: Observation =>
         Map(
-          "amount" -> vaaData.amount.asJson,
-          "fee" -> vaaData.fee.asJson,
-          "chainId" -> vaaData.chainId.asJson,
-          "receiverAddress" -> vaaData.receiverAddress.asJson,
-          "tokenId" -> vaaData.tokenId.asJson,
-          "timestamp" -> vaaData.timestamp.asJson,
-          "boxId" -> vaaData.boxId.asJson,
+          "txId" -> observe.txId.asJson,
+          "timestamp" -> observe.timestamp.asJson,
+          "nonce" -> observe.nonce.asJson,
+          "sequence" -> observe.sequence.asJson,
+          "consistencyLevel" -> observe.consistencyLevel.asJson,
+          "emitterAddress" -> observe.emitterAddress.asJson,
+          "payload" -> observe.payload.asJson,
+          "height" -> observe.height.asJson,
         ).asJson
       })
-      result = Json.obj("boxesData" -> VAADataList.asJson)
+      result = Json.obj("observations" -> VAADataList.asJson)
       Ok(result.toString()).as("application/json")
     }
     catch {

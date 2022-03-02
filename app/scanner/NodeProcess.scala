@@ -5,23 +5,27 @@ import special.collection.Coll
 import helpers.Utils.addressEncoder
 import io.circe.Decoder
 import io.circe.parser.parse
-import models.{ExtractedOutput, ExtractedOutputModel, ExtractedOutputResultModel, VAAData}
+import models.{ExtractedOutput, ExtractedOutputModel, ExtractedOutputResultModel, Observation, VAAPayload}
 import network.GetURL.getOrErrorStr
 import network.NetworkUtils
 import org.ergoplatform.ErgoBox
-import org.ergoplatform.appkit.{ErgoToken, InputBox}
+import org.ergoplatform.appkit.{Address, ErgoId, ErgoToken, InputBox}
 import org.ergoplatform.appkit.impl.ErgoTreeContract
 import org.ergoplatform.modifiers.ErgoFullBlock
 import org.ergoplatform.modifiers.history.Header
 import scorex.util.encode.Base16
 import settings.Configuration
 
+import java.nio.{ByteBuffer, ByteOrder}
 import javax.inject.Inject
 import scala.collection.mutable
 import scala.util.{Failure, Success}
 
 
-class NodeProcess @Inject()(networkUtils: NetworkUtils, outputDao: OutputDAO, daoUtils: DAOUtils) {
+class NodeProcess @Inject()(networkUtils: NetworkUtils,
+                            outputDAO: OutputDAO,
+                            extractedBlockDAO: ExtractedBlockDAO,
+                            daoUtils: DAOUtils) {
 
   val serverUrl: String = Configuration.serviceConf.serverUrl
 
@@ -77,13 +81,13 @@ class NodeProcess @Inject()(networkUtils: NetworkUtils, outputDao: OutputDAO, da
     ergoFullBlock
   }
 
-  def getVAAsData(offsetHeight: Int, limitHeight: Int): mutable.Buffer[VAAData] ={
-    val boxes = outputDao.selectOutPutBoxesByHeight(offsetHeight, limitHeight)
+  def getVAAsData(offsetHeight: Int, limitHeight: Int): mutable.Buffer[Observation] = {
+    val boxes = outputDAO.selectOutPutBoxesByHeight(offsetHeight, limitHeight)
     var amount = 0L
     var fee = 0L
     var receiverAddress = "".getBytes()
     var chainId = "".getBytes()
-    val VAADataList = mutable.Buffer[VAAData]()
+    val observationList = mutable.Buffer[Observation]()
 
     boxes.foreach { box =>
       box.additionalRegisters.foreach(
@@ -99,10 +103,25 @@ class NodeProcess @Inject()(networkUtils: NetworkUtils, outputDao: OutputDAO, da
           }
         }
       )
-      VAADataList += VAAData(amount, fee, Base16.encode(chainId), Base16.encode(receiverAddress),
-        box.additionalTokens(1)._1.toString, outputDao.getBoxTimestampByBoxId(Base16.encode(box.id)), Base16.encode(box.id))
+      val payloadMap = Seq[Array[Byte]](
+        0.toShort.toString.getBytes(),
+        ByteBuffer.allocate(32).order(ByteOrder.BIG_ENDIAN).putLong(amount).array(),
+        ErgoId.create(box.additionalTokens(1)._1.toString).getBytes,
+        ByteBuffer.allocate(2).order(ByteOrder.BIG_ENDIAN).putShort(2).array(), // Ergo
+        Address.create("9fRAWhdxEsTcdb8PhGNrZfwqa65zfkuYHAMmkQLcic1gdLSV5vA").getErgoAddress.script.bytes,
+        chainId, // toChain
+        ByteBuffer.allocate(32).order(ByteOrder.BIG_ENDIAN).putLong(fee).array()
+      )
+      var payload: Array[Byte] = Array[Byte]()
+      payloadMap.foreach(item =>
+        payload = payload ++ item
+      )
+      val queryBox: ExtractedOutputModel = daoUtils.awaitResult(outputDAO.getByBoxId(Base16.encode(box.id))).get
+      val height = daoUtils.execAwait(extractedBlockDAO.getByHeaderId(queryBox.headerId)).head.height
+      observationList += Observation(queryBox.txId, queryBox.timestamp, queryBox.txIndex, queryBox.sequence,
+        Configuration.serviceConf.consistencyLevel, Configuration.serviceConf.emitterAddress, payload, height)
     }
-    VAADataList
+    observationList
   }
 
   def convertToInputBox(box: ErgoBox): InputBox = {
@@ -127,7 +146,7 @@ class NodeProcess @Inject()(networkUtils: NetworkUtils, outputDao: OutputDAO, da
   }
 
   def checkBox(box: InputBox, inputTokens: Long): Boolean = {
-    if (box.getTokens.get(1).getValue > inputTokens){
+    if (box.getTokens.get(1).getValue > inputTokens) {
       return true
     }
     false
@@ -141,24 +160,26 @@ class NodeProcess @Inject()(networkUtils: NetworkUtils, outputDao: OutputDAO, da
 
     val createdOutputs = mutable.Buffer[ExtractedOutputModel]()
     networkUtils.getCtxClient(implicit ctx => {
-      ergoFullBlock.transactions.foreach { tx =>
-        var inputTokens: Long = 0L
-        tx.inputs.zipWithIndex.foreach {
-          case (input, _) =>
-            val inputBox: InputBox = ctx.getBoxesById(Base16.encode(input.boxId)).head
-            if (checkBank(inputBox)) {
-              inputTokens = inputBox.getTokens.get(1).getValue
-            }
-        }
-        tx.outputs.foreach { out =>
-          val outputBox = convertToInputBox(out)
-          if (checkBank(outputBox) && checkBox(outputBox, inputTokens)) {
-            createdOutputs += ExtractedOutput(
-              out,
-              ergoFullBlock.header
-            )
+      ergoFullBlock.transactions.zipWithIndex.foreach {
+        case (tx, index) =>
+          var inputTokens: Long = 0L
+          tx.inputs.zipWithIndex.foreach {
+            case (input, _) =>
+              val inputBox: InputBox = ctx.getBoxesById(Base16.encode(input.boxId)).head
+              if (checkBank(inputBox)) {
+                inputTokens = inputBox.getTokens.get(1).getValue
+              }
           }
-        }
+          tx.outputs.foreach { out =>
+            val outputBox = convertToInputBox(out)
+            if (checkBank(outputBox) && checkBox(outputBox, inputTokens)) {
+              createdOutputs += ExtractedOutput(
+                out,
+                index,
+                ergoFullBlock.header
+              )
+            }
+          }
       }
     })
     ExtractedOutputResultModel(createdOutputs)

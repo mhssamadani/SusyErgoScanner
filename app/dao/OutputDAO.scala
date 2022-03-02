@@ -39,7 +39,11 @@ trait OutputComponent {
 
     def additionalTokens = column[String]("ADDITIONAL_TOKENS")
 
-    def * = (boxId, txId, headerId, value, creationHeight, index, ergoTree, timestamp, bytes, additionalRegisters, additionalTokens, spent) <> (ExtractedOutputModel.tupled, ExtractedOutputModel.unapply)
+    def txIndex = column[Int]("TX_INDEX")
+
+    def sequence = column[Long]("SEQUENCE", O.AutoInc)
+
+    def * = (boxId, txId, headerId, value, creationHeight, index, ergoTree, timestamp, bytes, additionalRegisters, additionalTokens, txIndex, sequence, spent) <> (ExtractedOutputModel.tupled, ExtractedOutputModel.unapply)
 
     def pk = primaryKey("PK_OUTPUTS", (boxId, headerId))
   }
@@ -69,7 +73,11 @@ trait OutputComponent {
 
     def additionalTokens = column[String]("ADDITIONAL_TOKENS")
 
-    def * = (boxId, txId, headerId, value, creationHeight, index, ergoTree, timestamp, bytes, additionalRegisters, additionalTokens, spent) <> (ExtractedOutputModel.tupled, ExtractedOutputModel.unapply)
+    def txIndex = column[Int]("TX_INDEX")
+
+    def sequence = column[Long]("SEQUENCE", O.AutoInc)
+
+    def * = (boxId, txId, headerId, value, creationHeight, index, ergoTree, timestamp, bytes, additionalRegisters, additionalTokens, txIndex, sequence, spent) <> (ExtractedOutputModel.tupled, ExtractedOutputModel.unapply)
 
     def pk = primaryKey("PK_OUTPUTS", (boxId, headerId))
   }
@@ -146,5 +154,12 @@ class OutputDAO @Inject()(protected val dbConfigProvider: DatabaseConfigProvider
     daoUtils.awaitResult(db.run(outputs.filter(_.boxId === boxId).result.headOption)).get.timestamp
   }
 
+  /**
+   * @param boxId box id
+   * @return Output record(s) associated with the header
+   */
+  def getByBoxId(boxId: String): Future[Option[ExtractedOutputModel]] = {
+    db.run(outputs.filter(_.boxId === boxId).result.headOption)
+  }
 }
 

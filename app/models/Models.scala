@@ -35,19 +35,22 @@ object ExtractedAsset {
   }
 }
 
-case class ExtractedOutputModel(boxId: String, txId: String, headerId: String, value: Long, creationHeight: Int, index: Short, ergoTree: String, timestamp: Long, bytes: Array[Byte], additionalRegisters: String, additionalTokens: String, spent: Boolean = false)
+final case class ExtractedOutputModel(boxId: String, txId: String, headerId: String, value: Long, creationHeight: Int, index: Short, ergoTree: String, timestamp: Long, bytes: Array[Byte], additionalRegisters: String, additionalTokens: String, txIndex: Int, sequence: Long = 0L, spent: Boolean = false)
 
 object ExtractedOutput {
-  def apply(ergoBox: ErgoBox, header: Header): ExtractedOutputModel = {
+  def apply(ergoBox: ErgoBox, txIndex: Int, header: Header): ExtractedOutputModel = {
     ExtractedOutputModel(
       Base16.encode(ergoBox.id), ergoBox.transactionId, header.id, ergoBox.value, ergoBox.creationHeight,
       ergoBox.index, Base16.encode(ergoBox.ergoTree.bytes), header.timestamp, ergoBox.bytes,
       ergoBox.additionalRegisters.asJson.toString(),
-      ergoBox.additionalTokens.toArray.toSeq.asJson.toString()
+      ergoBox.additionalTokens.toArray.toSeq.asJson.toString(),
+      txIndex
     )
   }
 }
 
 case class ExtractedOutputResultModel(createdOutputs: Seq[ExtractedOutputModel])
 
-case class VAAData(amount: Long, fee: Long, chainId: String, receiverAddress: String, tokenId: String, timestamp: Long, boxId: String)
+final case class VAAPayload(payloadId: Short, amount: Long, tokenId: String, chainId: Short, receiverAddress: String, toChainId: Short, fee: Long)
+
+final case class Observation(txId: String, timestamp: Long, nonce: Int, sequence: Long, consistencyLevel: Short, emitterAddress: String, payload: Array[Byte], height: Long)

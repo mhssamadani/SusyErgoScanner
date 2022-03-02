@@ -3,7 +3,7 @@ package scanner
 import dao.DAOUtils
 import io.circe.parser.parse
 import mocked.MockedNetworkUtils
-import models.{ExtractedBlock, ExtractedOutput, ExtractedOutputModel, ExtractedOutputResultModel, VAAData}
+import models.{ExtractedBlock, ExtractedOutput, ExtractedOutputModel, ExtractedOutputResultModel}
 import org.ergoplatform.appkit.impl.ErgoTreeContract
 import org.ergoplatform.appkit.{Address, ErgoToken, InputBox}
 import org.ergoplatform.modifiers.ErgoFullBlock
@@ -40,6 +40,7 @@ class NodeProcessSpec extends TestSuite {
   def createNodeProcessObject = new NodeProcess(
     networkUtils.getMocked,
     DaoContext.outputDAO,
+    DaoContext.extractedBlockDAO,
     daoUtils
   )
 
@@ -54,30 +55,32 @@ class NodeProcessSpec extends TestSuite {
     val createdOutputs = mutable.Buffer[ExtractedOutputModel]()
     val nodeProcessObj = createNodeProcessObject
     networkUtils.getMocked.getCtxClient(implicit ctx => {
-      ergoFullBlock.transactions.foreach { tx =>
-        var inputTokens: Long = 0L
-        tx.inputs.zipWithIndex.foreach {
-          case (input, _) =>
-            val inputBox: InputBox = ctx.newTxBuilder().outBoxBuilder()
-              .value(1000L)
-              .tokens(new ErgoToken("6eb9719309e89902978749f1f1219e4a1e381c628f763a862d92176a17a8db19", 1),
-                new ErgoToken("f9bb38db0a8aad038695d5c04672c1232a5689579408af5509f31e285516a1e2", 10L))
-              .contract(new ErgoTreeContract(Address.create(Configuration.serviceConf.bankScriptAddress).getErgoAddress.script))
-              .build().convertToInputWith(Base16.encode(input.boxId), 1)
+      ergoFullBlock.transactions.zipWithIndex.foreach {
+        case (tx, index) =>
+          var inputTokens: Long = 0L
+          tx.inputs.zipWithIndex.foreach {
+            case (input, _) =>
+              val inputBox: InputBox = ctx.newTxBuilder().outBoxBuilder()
+                .value(1000L)
+                .tokens(new ErgoToken("6eb9719309e89902978749f1f1219e4a1e381c628f763a862d92176a17a8db19", 1),
+                  new ErgoToken("f9bb38db0a8aad038695d5c04672c1232a5689579408af5509f31e285516a1e2", 10L))
+                .contract(new ErgoTreeContract(Address.create(Configuration.serviceConf.bankScriptAddress).getErgoAddress.script))
+                .build().convertToInputWith(Base16.encode(input.boxId), 1)
 
-            if (nodeProcessObj.checkBank(inputBox)) {
-              inputTokens = inputBox.getTokens.get(1).getValue
-            }
-        }
-        tx.outputs.foreach { out =>
-          val outputBox = nodeProcessObj.convertToInputBox(out)
-          if (nodeProcessObj.checkBank(outputBox) && nodeProcessObj.checkBox(outputBox, inputTokens)) {
-            createdOutputs += ExtractedOutput(
-              out,
-              ergoFullBlock.header
-            )
+              if (nodeProcessObj.checkBank(inputBox)) {
+                inputTokens = inputBox.getTokens.get(1).getValue
+              }
           }
-        }
+          tx.outputs.foreach { out =>
+            val outputBox = nodeProcessObj.convertToInputBox(out)
+            if (nodeProcessObj.checkBank(outputBox) && nodeProcessObj.checkBox(outputBox, inputTokens)) {
+              createdOutputs += ExtractedOutput(
+                out,
+                index,
+                ergoFullBlock.header
+              )
+            }
+          }
       }
     })
     ExtractedOutputResultModel(createdOutputs)

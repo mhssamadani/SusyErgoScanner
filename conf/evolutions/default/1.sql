@@ -57,18 +57,19 @@ CREATE INDEX "outputs__timestamp" ON outputs (timestamp);
 
 CREATE TABLE outputs_fork
 (
-    box_id          VARCHAR(64)  NOT NULL,
-    tx_id           VARCHAR(64)  NOT NULL,
-    header_id       VARCHAR(64)  NOT NULL,
-    value           BIGINT       NOT NULL,
-    creation_height INTEGER      NOT NULL,
-    index           INTEGER      NOT NULL,
-    ergo_tree       VARCHAR      NOT NULL,
-    timestamp       BIGINT       NOT NULL,
-    bytes           BLOB         NOT NULL,
-    spent           BOOLEAN      NOT NULL,
-    spend_address   VARCHAR(255) NOT NULL,
-    stealth_id      VARCHAR(255) NOT NULL,
+    box_id               VARCHAR(64)  NOT NULL,
+    tx_id                VARCHAR(64)  NOT NULL,
+    header_id            VARCHAR(64)  NOT NULL,
+    value                BIGINT       NOT NULL,
+    creation_height      INTEGER      NOT NULL,
+    index                INTEGER      NOT NULL,
+    ergo_tree            VARCHAR      NOT NULL,
+    timestamp            BIGINT       NOT NULL,
+    bytes                BLOB         NOT NULL,
+    ADDITIONAL_REGISTERS VARCHAR(255) NOT NULL,
+    ADDITIONAL_TOKENS    VARCHAR(255) NOT NULL,
+    TX_INDEX             INTEGER      NOT NULL,
+    SEQUENCE             BIGINT       NOT NULL AUTO_INCREMENT, ,
     CONSTRAINT PK_OUTPUTS_FORK PRIMARY KEY (box_id, header_id)
 );
 

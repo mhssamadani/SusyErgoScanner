@@ -6,6 +6,8 @@ case class ScannerConf(
                         explorerUrl: String,
                         serverUrl: String,
                         bestBlockId: String,
-                        bankScriptAddress: String
+                        bankScriptAddress: String,
+                        emitterAddress: String,
+                        consistencyLevel: Short,
                       )
 
